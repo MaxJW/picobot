@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 )
 
 func TestStartTelegramWithBase(t *testing.T) {
@@ -43,7 +43,7 @@ func TestStartTelegramWithBase(t *testing.T) {
 	defer h.Close()
 
 	base := h.URL + "/bot" + token
-	b := bus.NewMessageBus(10)
+	b := chat.NewHub(10)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -53,7 +53,7 @@ func TestStartTelegramWithBase(t *testing.T) {
 
 	// Wait for inbound from getUpdates
 	select {
-	case msg := <-b.Inbound:
+	case msg := <-b.In:
 		if msg.Content != "hello" {
 			t.Fatalf("unexpected inbound content: %s", msg.Content)
 		}
@@ -65,8 +65,8 @@ func TestStartTelegramWithBase(t *testing.T) {
 	}
 
 	// send an outbound message and ensure server receives it
-	out := bus.OutboundMessage{Channel: "telegram", ChatID: "456", Content: "reply"}
-	b.Outbound <- out
+	out := chat.Outbound{Channel: "telegram", ChatID: "456", Content: "reply"}
+	b.Out <- out
 
 	select {
 	case v := <-sent:

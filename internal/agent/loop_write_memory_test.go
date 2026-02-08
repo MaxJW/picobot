@@ -8,7 +8,7 @@ import (
 
 	"github.com/local/picobot/internal/agent/memory"
 	"github.com/local/picobot/internal/agent/tools"
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 	"github.com/local/picobot/internal/providers"
 )
 
@@ -30,7 +30,7 @@ func (p *toolCallingProvider) Chat(ctx context.Context, messages []providers.Mes
 func (p *toolCallingProvider) GetDefaultModel() string { return "fake-model" }
 
 func TestAgentExecutesWriteMemoryToolCall(t *testing.T) {
-	b := bus.NewMessageBus(10)
+	b := chat.NewHub(10)
 	p := &toolCallingProvider{}
 	ag := NewAgentLoop(b, p, p.GetDefaultModel(), 5, "", nil)
 
@@ -44,9 +44,9 @@ func TestAgentExecutesWriteMemoryToolCall(t *testing.T) {
 	defer cancel()
 	go ag.Run(ctx)
 
-	in := bus.InboundMessage{Channel: "cli", SenderID: "user", ChatID: "one", Content: "Please remember my appointment"}
+	in := chat.Inbound{Channel: "cli", SenderID: "user", ChatID: "one", Content: "Please remember my appointment"}
 	select {
-	case b.Inbound <- in:
+	case b.In <- in:
 	default:
 		t.Fatalf("couldn't send inbound")
 	}
@@ -54,7 +54,7 @@ func TestAgentExecutesWriteMemoryToolCall(t *testing.T) {
 	deadline := time.After(1 * time.Second)
 	for {
 		select {
-		case out := <-b.Outbound:
+		case out := <-b.Out:
 			if out.Content == "Saved, thanks." {
 				// verify today's file contains the note
 				memCtx, _ := m.ReadToday()

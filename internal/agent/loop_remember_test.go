@@ -7,7 +7,7 @@ import (
 
 	"strings"
 
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 	"github.com/local/picobot/internal/providers"
 )
 
@@ -20,7 +20,7 @@ func (f *FailingProvider) Chat(ctx context.Context, messages []providers.Message
 func (f *FailingProvider) GetDefaultModel() string { return "fail" }
 
 func TestAgentRemembersToday(t *testing.T) {
-	b := bus.NewMessageBus(10)
+	b := chat.NewHub(10)
 	p := &FailingProvider{}
 	ag := NewAgentLoop(b, p, p.GetDefaultModel(), 5, "", nil)
 
@@ -28,9 +28,9 @@ func TestAgentRemembersToday(t *testing.T) {
 	defer cancel()
 	go ag.Run(ctx)
 
-	in := bus.InboundMessage{Channel: "cli", SenderID: "user", ChatID: "one", Content: "Remember to buy milk"}
+	in := chat.Inbound{Channel: "cli", SenderID: "user", ChatID: "one", Content: "Remember to buy milk"}
 	select {
-	case b.Inbound <- in:
+	case b.In <- in:
 	default:
 		t.Fatalf("couldn't send inbound")
 	}
@@ -38,7 +38,7 @@ func TestAgentRemembersToday(t *testing.T) {
 	deadline := time.After(1 * time.Second)
 	for {
 		select {
-		case out := <-b.Outbound:
+		case out := <-b.Out:
 			if out.Content == "OK, I've remembered that." {
 				// success; verify today's file contains the note
 				memCtx, _ := ag.memory.ReadToday()

@@ -10,7 +10,7 @@ import (
 
 	"github.com/local/picobot/internal/agent/memory"
 	"github.com/local/picobot/internal/agent/tools"
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 	"github.com/local/picobot/internal/cron"
 	"github.com/local/picobot/internal/providers"
 	"github.com/local/picobot/internal/session"
@@ -20,7 +20,7 @@ var rememberRE = regexp.MustCompile(`(?i)^remember(?:\s+to)?\s+(.+)$`)
 
 // AgentLoop is the core processing loop; it holds an LLM provider, tools, sessions and context builder.
 type AgentLoop struct {
-	bus           *bus.MessageBus
+	bus           *chat.Hub
 	provider      providers.LLMProvider
 	tools         *tools.Registry
 	sessions      *session.SessionManager
@@ -32,7 +32,7 @@ type AgentLoop struct {
 }
 
 // NewAgentLoop creates a new AgentLoop with the given provider.
-func NewAgentLoop(b *bus.MessageBus, provider providers.LLMProvider, model string, maxIterations int, workspace string, scheduler *cron.Scheduler) *AgentLoop {
+func NewAgentLoop(b *chat.Hub, provider providers.LLMProvider, model string, maxIterations int, workspace string, scheduler *cron.Scheduler) *AgentLoop {
 	if model == "" {
 		model = provider.GetDefaultModel()
 	}
@@ -89,7 +89,7 @@ func (a *AgentLoop) Run(ctx context.Context) {
 			log.Println("Agent loop received shutdown signal")
 			a.running = false
 			return
-		case msg, ok := <-a.bus.Inbound:
+		case msg, ok := <-a.bus.In:
 			if !ok {
 				log.Println("Inbound channel closed, stopping agent loop")
 				a.running = false
@@ -107,9 +107,9 @@ func (a *AgentLoop) Run(ctx context.Context) {
 				if err := a.memory.AppendToday(note); err != nil {
 					log.Printf("error appending to memory: %v", err)
 				}
-				out := bus.OutboundMessage{Channel: msg.Channel, ChatID: msg.ChatID, Content: "OK, I've remembered that."}
+				out := chat.Outbound{Channel: msg.Channel, ChatID: msg.ChatID, Content: "OK, I've remembered that."}
 				select {
-				case a.bus.Outbound <- out:
+				case a.bus.Out <- out:
 				default:
 					log.Println("Outbound channel full, dropping message")
 				}
@@ -184,9 +184,9 @@ func (a *AgentLoop) Run(ctx context.Context) {
 			session.AddMessage("assistant", finalContent)
 			a.sessions.Save(session)
 
-			out := bus.OutboundMessage{Channel: msg.Channel, ChatID: msg.ChatID, Content: finalContent}
+			out := chat.Outbound{Channel: msg.Channel, ChatID: msg.ChatID, Content: finalContent}
 			select {
-			case a.bus.Outbound <- out:
+			case a.bus.Out <- out:
 			default:
 				log.Println("Outbound channel full, dropping message")
 			}

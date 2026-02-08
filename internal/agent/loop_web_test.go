@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 	"github.com/local/picobot/internal/providers"
 )
 
@@ -50,7 +50,7 @@ func TestAgentExecutesWebToolCall(t *testing.T) {
 	}))
 	defer h.Close()
 
-	b := bus.NewMessageBus(10)
+	b := chat.NewHub(10)
 	p := &webCallingProvider{server: h.URL}
 	ag := NewAgentLoop(b, p, p.GetDefaultModel(), 5, "", nil)
 
@@ -58,9 +58,9 @@ func TestAgentExecutesWebToolCall(t *testing.T) {
 	defer cancel()
 	go ag.Run(ctx)
 
-	in := bus.InboundMessage{Channel: "cli", SenderID: "user", ChatID: "one", Content: "Please fetch"}
+	in := chat.Inbound{Channel: "cli", SenderID: "user", ChatID: "one", Content: "Please fetch"}
 	select {
-	case b.Inbound <- in:
+	case b.In <- in:
 	default:
 		t.Fatalf("couldn't send inbound")
 	}
@@ -68,7 +68,7 @@ func TestAgentExecutesWebToolCall(t *testing.T) {
 	deadline := time.After(1 * time.Second)
 	for {
 		select {
-		case out := <-b.Outbound:
+		case out := <-b.Out:
 			if out.Content == "Done" {
 				if !p.seen {
 					t.Fatalf("expected provider to see web tool result in messages")

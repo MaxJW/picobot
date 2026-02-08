@@ -5,11 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 )
 
 func TestMessageToolPublishesOutbound(t *testing.T) {
-	b := bus.NewMessageBus(10)
+	b := chat.NewHub(10)
 	mt := NewMessageTool(b)
 	mt.SetContext("cli", "test-chat")
 
@@ -24,7 +24,7 @@ func TestMessageToolPublishesOutbound(t *testing.T) {
 	}
 
 	select {
-	case out := <-b.Outbound:
+	case out := <-b.Out:
 		if out.Content != "hello world" {
 			t.Fatalf("unexpected content: %s", out.Content)
 		}

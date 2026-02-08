@@ -17,8 +17,8 @@ import (
 
 	"github.com/local/picobot/internal/agent"
 	"github.com/local/picobot/internal/agent/memory"
-	bus_pkg "github.com/local/picobot/internal/bus"
 	"github.com/local/picobot/internal/channels"
+	"github.com/local/picobot/internal/chat"
 	"github.com/local/picobot/internal/config"
 	"github.com/local/picobot/internal/cron"
 	"github.com/local/picobot/internal/heartbeat"
@@ -65,7 +65,7 @@ func NewRootCmd() *cobra.Command {
 				return
 			}
 
-			bus := bus_pkg.NewMessageBus(100)
+			hub := chat.NewHub(100)
 			cfg, _ := config.LoadConfig()
 			var provider providers.LLMProvider
 			if cfg.Providers.OpenRouter != nil && cfg.Providers.OpenRouter.APIKey != "" {
@@ -85,7 +85,7 @@ func NewRootCmd() *cobra.Command {
 				model = provider.GetDefaultModel()
 			}
 
-			ag := agent.NewAgentLoop(bus, provider, model, 5, cfg.Agents.Defaults.Workspace, nil)
+			ag := agent.NewAgentLoop(hub, provider, model, 5, cfg.Agents.Defaults.Workspace, nil)
 
 			resp, err := ag.ProcessDirect(msg, 60*time.Second)
 			if err != nil {
@@ -103,7 +103,7 @@ func NewRootCmd() *cobra.Command {
 		Use:   "gateway",
 		Short: "Start long-running gateway (agent, telegram, heartbeat)",
 		Run: func(cmd *cobra.Command, args []string) {
-			bus := bus_pkg.NewMessageBus(200)
+			hub := chat.NewHub(200)
 			cfg, _ := config.LoadConfig()
 			provider := providers.NewProviderFromConfig(cfg)
 
@@ -120,7 +120,7 @@ func NewRootCmd() *cobra.Command {
 			// create scheduler with fire callback that routes back through the agent loop, so the LLM can process the reminder and respond naturally to the user.
 			scheduler := cron.NewScheduler(func(job cron.Job) {
 				log.Printf("cron fired: %s — %s", job.Name, job.Message)
-				bus.Inbound <- bus_pkg.InboundMessage{
+				hub.In <- chat.Inbound{
 					Channel:  job.Channel,
 					SenderID: "cron",
 					ChatID:   job.ChatID,
@@ -128,7 +128,7 @@ func NewRootCmd() *cobra.Command {
 				}
 			})
 
-			ag := agent.NewAgentLoop(bus, provider, model, 20, cfg.Agents.Defaults.Workspace, scheduler)
+			ag := agent.NewAgentLoop(hub, provider, model, 20, cfg.Agents.Defaults.Workspace, scheduler)
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 
@@ -143,11 +143,11 @@ func NewRootCmd() *cobra.Command {
 			if hbInterval <= 0 {
 				hbInterval = 60 * time.Second
 			}
-			heartbeat.StartHeartbeat(ctx, cfg.Agents.Defaults.Workspace, hbInterval, bus)
+			heartbeat.StartHeartbeat(ctx, cfg.Agents.Defaults.Workspace, hbInterval, hub)
 
 			// start telegram if enabled
 			if cfg.Channels.Telegram.Enabled {
-				if err := channels.StartTelegram(ctx, bus, cfg.Channels.Telegram.Token, cfg.Channels.Telegram.AllowFrom); err != nil {
+				if err := channels.StartTelegram(ctx, hub, cfg.Channels.Telegram.Token, cfg.Channels.Telegram.AllowFrom); err != nil {
 					fmt.Fprintf(os.Stderr, "failed to start telegram: %v\n", err)
 				}
 			}

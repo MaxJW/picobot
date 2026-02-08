@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 )
 
 // StartHeartbeat starts a periodic check that reads HEARTBEAT.md and pushes
 // its content into the agent's inbound bus for processing.
-func StartHeartbeat(ctx context.Context, workspace string, interval time.Duration, msgBus *bus.MessageBus) {
+func StartHeartbeat(ctx context.Context, workspace string, interval time.Duration, hub *chat.Hub) {
 	go func() {
 		ticker := time.NewTicker(interval)
 		defer ticker.Stop()
@@ -37,7 +37,7 @@ func StartHeartbeat(ctx context.Context, workspace string, interval time.Duratio
 
 				// Push heartbeat content into the agent loop for processing
 				log.Println("heartbeat: sending tasks to agent")
-				msgBus.Inbound <- bus.InboundMessage{
+				hub.In <- chat.Inbound{
 					Channel:  "heartbeat",
 					ChatID:   "system",
 					SenderID: "heartbeat",

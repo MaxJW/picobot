@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 	"github.com/local/picobot/internal/providers"
 )
 
@@ -29,7 +29,7 @@ func (f *FakeProvider) Chat(ctx context.Context, messages []providers.Message, t
 func (f *FakeProvider) GetDefaultModel() string { return "fake" }
 
 func TestAgentExecutesToolCall(t *testing.T) {
-	b := bus.NewMessageBus(10)
+	b := chat.NewHub(10)
 	p := &FakeProvider{}
 	ag := NewAgentLoop(b, p, p.GetDefaultModel(), 3, "", nil)
 
@@ -38,9 +38,9 @@ func TestAgentExecutesToolCall(t *testing.T) {
 	go ag.Run(ctx)
 
 	// send inbound
-	in := bus.InboundMessage{Channel: "cli", SenderID: "user", ChatID: "one", Content: "trigger"}
+	in := chat.Inbound{Channel: "cli", SenderID: "user", ChatID: "one", Content: "trigger"}
 	select {
-	case b.Inbound <- in:
+	case b.In <- in:
 	default:
 		t.Fatalf("couldn't send inbound")
 	}
@@ -49,7 +49,7 @@ func TestAgentExecutesToolCall(t *testing.T) {
 	deadline := time.After(1 * time.Second)
 	for {
 		select {
-		case out := <-b.Outbound:
+		case out := <-b.Out:
 			if out.Content == "All done!" {
 				return
 			}

@@ -11,24 +11,24 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 )
 
 // StartTelegram is a convenience wrapper that uses the real polling implementation
 // with the standard Telegram base URL.
 // allowFrom is a list of Telegram user IDs permitted to interact with the bot.
 // If empty, ALL users are allowed (open mode).
-func StartTelegram(ctx context.Context, mb *bus.MessageBus, token string, allowFrom []string) error {
+func StartTelegram(ctx context.Context, hub *chat.Hub, token string, allowFrom []string) error {
 	if token == "" {
 		return fmt.Errorf("telegram token not provided")
 	}
 	base := "https://api.telegram.org/bot" + token
-	return StartTelegramWithBase(ctx, mb, token, base, allowFrom)
+	return StartTelegramWithBase(ctx, hub, token, base, allowFrom)
 }
 
 // StartTelegramWithBase starts long-polling against the given base URL (e.g., https://api.telegram.org/bot<TOKEN> or a test server URL).
 // allowFrom restricts which Telegram user IDs may send messages. Empty means allow all.
-func StartTelegramWithBase(ctx context.Context, mb *bus.MessageBus, token, base string, allowFrom []string) error {
+func StartTelegramWithBase(ctx context.Context, hub *chat.Hub, token, base string, allowFrom []string) error {
 	if base == "" {
 		return fmt.Errorf("base URL is required")
 	}
@@ -104,7 +104,7 @@ func StartTelegramWithBase(ctx context.Context, mb *bus.MessageBus, token, base 
 					}
 				}
 				chatID := strconv.FormatInt(m.Chat.ID, 10)
-				mb.Inbound <- bus.InboundMessage{
+				hub.In <- chat.Inbound{
 					Channel:   "telegram",
 					SenderID:  fromID,
 					ChatID:    chatID,
@@ -123,7 +123,7 @@ func StartTelegramWithBase(ctx context.Context, mb *bus.MessageBus, token, base 
 			case <-ctx.Done():
 				log.Println("telegram: stopping outbound sender")
 				return
-			case out := <-mb.Outbound:
+			case out := <-hub.Out:
 				if out.Channel != "telegram" {
 					// ignore messages for other channels
 					continue

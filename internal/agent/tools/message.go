@@ -5,18 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/local/picobot/internal/bus"
+	"github.com/local/picobot/internal/chat"
 )
 
-// MessageTool sends messages to a channel via the MessageBus.
+// MessageTool sends messages to a channel via the chat Hub.
 // It holds a context (channel + chatID) which should be set per-incoming-message.
 type MessageTool struct {
-	bus     *bus.MessageBus
+	bus     *chat.Hub
 	channel string
 	chatID  string
 }
 
-func NewMessageTool(b *bus.MessageBus) *MessageTool {
+func NewMessageTool(b *chat.Hub) *MessageTool {
 	return &MessageTool{bus: b}
 }
 
@@ -58,13 +58,13 @@ func (m *MessageTool) Execute(ctx context.Context, args map[string]interface{}) 
 		return "", fmt.Errorf("message tool: 'content' argument required")
 	}
 	// Publish outbound message to bus
-	out := bus.OutboundMessage{
+	out := chat.Outbound{
 		Channel: m.channel,
 		ChatID:  m.chatID,
 		Content: content,
 	}
 	select {
-	case m.bus.Outbound <- out:
+	case m.bus.Out <- out:
 		return "sent", nil
 	default:
 		return "", fmt.Errorf("outbound channel full")
