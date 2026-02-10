@@ -140,7 +140,7 @@ Chat with your agent from your phone. Set up in 2 minutes:
 
 1. Message [@BotFather](https://t.me/BotFather) — `/newbot` — copy the token
 2. Add the token to config or pass as `TELEGRAM_BOT_TOKEN` env var
-3. Start the gateway
+3. Start the communication gateway
 
 See [HOW_TO_START.md](HOW_TO_START.md) for a detailed BotFather walkthrough.
 
