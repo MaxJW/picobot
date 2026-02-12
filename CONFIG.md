@@ -21,6 +21,11 @@ Picobot is configured via `~/.picobot/config.json`. Run `picobot onboard` to gen
       "enabled": false,
       "token": "",
       "allowFrom": []
+    },
+    "discord": {
+      "enabled": false,
+      "token": "",
+      "allowFrom": []
     }
   },
   "providers": {
@@ -38,18 +43,19 @@ Picobot is configured via `~/.picobot/config.json`. Run `picobot onboard` to gen
 
 Agent behavior settings.
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `workspace` | string | `~/.picobot/workspace` | Path to the agent's workspace directory. Contains bootstrap files, memory, and skills. |
-| `model` | string | `stub-model` | Default LLM model to use. Set to a real model like `google/gemini-2.5-flash`. Can be overridden with the `-M` flag. |
-| `maxTokens` | int | `8192` | Maximum tokens for LLM responses. |
-| `temperature` | float | `0.7` | LLM temperature (0.0 = deterministic, 1.0 = creative). |
-| `maxToolIterations` | int | `100` | Maximum number of tool-calling iterations per request. Prevents infinite loops. |
-| `heartbeatIntervalS` | int | `60` | How often (in seconds) the heartbeat checks `HEARTBEAT.md` for periodic tasks. Only used in gateway mode. |
+| Field                | Type   | Default                | Description                                                                                                         |
+| -------------------- | ------ | ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `workspace`          | string | `~/.picobot/workspace` | Path to the agent's workspace directory. Contains bootstrap files, memory, and skills.                              |
+| `model`              | string | `stub-model`           | Default LLM model to use. Set to a real model like `google/gemini-2.5-flash`. Can be overridden with the `-M` flag. |
+| `maxTokens`          | int    | `8192`                 | Maximum tokens for LLM responses.                                                                                   |
+| `temperature`        | float  | `0.7`                  | LLM temperature (0.0 = deterministic, 1.0 = creative).                                                              |
+| `maxToolIterations`  | int    | `100`                  | Maximum number of tool-calling iterations per request. Prevents infinite loops.                                     |
+| `heartbeatIntervalS` | int    | `60`                   | How often (in seconds) the heartbeat checks `HEARTBEAT.md` for periodic tasks. Only used in gateway mode.           |
 
 ### Model Priority
 
 The model is resolved in this order:
+
 1. **CLI flag** (`-M` / `--model`)
 2. **Config** (`agents.defaults.model`)
 3. **Provider default** (fallback)
@@ -81,9 +87,9 @@ LLM provider configuration. Picobot uses an OpenAI-compatible API provider.
 
 Connect to any OpenAI-compatible API service (OpenAI, OpenRouter, Ollama, etc.).
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `apiKey` | string | *(required)* | Your API key. Get OpenRouter keys at https://openrouter.ai/keys |
+| Field     | Type   | Default                        | Description                                                                                                                         |
+| --------- | ------ | ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `apiKey`  | string | _(required)_                   | Your API key. Get OpenRouter keys at https://openrouter.ai/keys                                                                     |
 | `apiBase` | string | `https://openrouter.ai/api/v1` | API base URL. Use `https://api.openai.com/v1` for OpenAI, `http://localhost:11434/v1` for local Ollama, or any compatible endpoint. |
 
 ```json
@@ -129,15 +135,41 @@ If no valid provider is configured, Picobot uses a **Stub** provider (echoes bac
 
 ## channels
 
-Chat channel integrations. Currently supports Telegram.
+Chat channel integrations. Supports Discord (DMs only) and Telegram.
+
+### channels.discord
+
+Direct messages only — the bot only responds to DMs, not to messages in servers.
+
+| Field       | Type     | Default | Description                                                                                      |
+| ----------- | -------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `enabled`   | bool     | `false` | Set to `true` to start the Discord bot.                                                          |
+| `token`     | string   | `""`    | Your Discord Bot token from the [Developer Portal](https://discord.com/developers/applications). |
+| `allowFrom` | string[] | `[]`    | List of allowed Discord user IDs. Empty = allow all.                                             |
+
+**Important:** Enable the **Message Content Intent** (privileged) in your app's Bot settings in the Developer Portal, or the bot will not receive message content in DMs.
+
+```json
+{
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "YOUR_DISCORD_BOT_TOKEN",
+      "allowFrom": ["123456789012345678"]
+    }
+  }
+}
+```
+
+To message the bot: open your app in the Developer Portal → Bot → copy the "Invite" or "Message" link, or add the bot to any server and DM it.
 
 ### channels.telegram
 
-| Field | Type | Default | Description |
-|-------|------|---------|-------------|
-| `enabled` | bool | `false` | Set to `true` to start the Telegram bot. |
-| `token` | string | `""` | Your Telegram Bot token from [@BotFather](https://t.me/BotFather). |
-| `allowFrom` | string[] | `[]` | List of allowed Telegram user IDs. Empty = allow all. |
+| Field       | Type     | Default | Description                                                        |
+| ----------- | -------- | ------- | ------------------------------------------------------------------ |
+| `enabled`   | bool     | `false` | Set to `true` to start the Telegram bot.                           |
+| `token`     | string   | `""`    | Your Telegram Bot token from [@BotFather](https://t.me/BotFather). |
+| `allowFrom` | string[] | `[]`    | List of allowed Telegram user IDs. Empty = allow all.              |
 
 ```json
 {
@@ -157,16 +189,16 @@ Chat channel integrations. Currently supports Telegram.
 
 The workspace directory (default `~/.picobot/workspace`) contains files that shape agent behavior:
 
-| File | Purpose | Who edits |
-|------|---------|-----------|
-| `SOUL.md` | Agent personality, values, communication style | You (once) |
-| `AGENTS.md` | Agent instructions, rules, guidelines | You (once) |
-| `USER.md` | Your profile — name, timezone, preferences | You (once) |
-| `TOOLS.md` | Tool reference documentation | You (once) |
-| `HEARTBEAT.md` | Periodic tasks checked every `heartbeatIntervalS` seconds | You / Agent |
-| `memory/MEMORY.md` | Long-term memory | Agent (via write_memory tool) |
-| `memory/YYYY-MM-DD.md` | Daily notes | Agent (via write_memory tool) |
-| `skills/` | Skill packages | Agent (via skill tools) or you manually |
+| File                   | Purpose                                                   | Who edits                               |
+| ---------------------- | --------------------------------------------------------- | --------------------------------------- |
+| `SOUL.md`              | Agent personality, values, communication style            | You (once)                              |
+| `AGENTS.md`            | Agent instructions, rules, guidelines                     | You (once)                              |
+| `USER.md`              | Your profile — name, timezone, preferences                | You (once)                              |
+| `TOOLS.md`             | Tool reference documentation                              | You (once)                              |
+| `HEARTBEAT.md`         | Periodic tasks checked every `heartbeatIntervalS` seconds | You / Agent                             |
+| `memory/MEMORY.md`     | Long-term memory                                          | Agent (via write_memory tool)           |
+| `memory/YYYY-MM-DD.md` | Daily notes                                               | Agent (via write_memory tool)           |
+| `skills/`              | Skill packages                                            | Agent (via skill tools) or you manually |
 
 ---
 

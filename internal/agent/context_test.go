@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/local/picobot/internal/agent/memory"
+	"github.com/local/picobot/internal/providers"
 )
 
 func TestBuildMessagesIncludesMemories(t *testing.T) {
@@ -12,7 +13,7 @@ func TestBuildMessagesIncludesMemories(t *testing.T) {
 	history := []string{"user: hi"}
 	mems := []memory.MemoryItem{{Kind: "short", Text: "remember this"}, {Kind: "long", Text: "big fact"}}
 	memCtx := "Long-term memory: important fact"
-	msgs := cb.BuildMessages(history, "hello", "telegram", "123", memCtx, mems)
+	msgs := cb.BuildMessages(history, "hello", nil, "telegram", "123", memCtx, mems)
 
 	// Expect at least system prompt + some system messages + user history + current
 	if len(msgs) < 4 {
@@ -23,15 +24,16 @@ func TestBuildMessagesIncludesMemories(t *testing.T) {
 	}
 	// find a system message containing the memory context
 	foundMemCtx := false
-	foundSummary := false
-	for _, m := range msgs {
-		if m.Role == "system" && strings.Contains(m.Content, "Long-term memory: important fact") {
-			foundMemCtx = true
+		foundSummary := false
+		for _, m := range msgs {
+			c := providers.ContentToString(m.Content)
+			if m.Role == "system" && strings.Contains(c, "Long-term memory: important fact") {
+				foundMemCtx = true
+			}
+			if m.Role == "system" && strings.Contains(c, "remember this") && strings.Contains(c, "big fact") {
+				foundSummary = true
+			}
 		}
-		if m.Role == "system" && strings.Contains(m.Content, "remember this") && strings.Contains(m.Content, "big fact") {
-			foundSummary = true
-		}
-	}
 	if !foundMemCtx {
 		t.Fatalf("expected memory context system message to be present in messages: %v", msgs)
 	}

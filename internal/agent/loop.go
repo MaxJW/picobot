@@ -138,7 +138,7 @@ func (a *AgentLoop) Run(ctx context.Context) {
 			// get file-backed memory context (long-term + today)
 			memCtx, _ := a.memory.GetMemoryContext()
 			memories := a.memory.Recent(5)
-			messages := a.context.BuildMessages(session.GetHistory(), msg.Content, msg.Channel, msg.ChatID, memCtx, memories)
+			messages := a.context.BuildMessages(session.GetHistory(), msg.Content, msg.Media, msg.Channel, msg.ChatID, memCtx, memories)
 
 			iteration := 0
 			finalContent := ""
@@ -206,7 +206,7 @@ func (a *AgentLoop) ProcessDirect(content string, timeout time.Duration) (string
 	// Build full context (bootstrap files, skills, memory) just like the main loop
 	memCtx, _ := a.memory.GetMemoryContext()
 	memories := a.memory.Recent(5)
-	messages := a.context.BuildMessages(nil, content, "cli", "direct", memCtx, memories)
+	messages := a.context.BuildMessages(nil, content, nil, "cli", "direct", memCtx, memories)
 
 	// Support tool calling iterations (similar to main loop)
 	var lastToolResult string

@@ -25,6 +25,7 @@ Run the onboard command to create the config and workspace:
 ```
 
 This creates:
+
 - `~/.picobot/config.json` — your configuration file
 - `~/.picobot/workspace/` — the agent's workspace with bootstrap files:
   - `SOUL.md` — agent personality and values
@@ -88,42 +89,104 @@ Edit `~/.picobot/workspace/USER.md` to fill in your name, timezone, preferences,
 ./picobot gateway
 ```
 
-This starts the agent loop, heartbeat, and any enabled channels (e.g., Telegram).
+This starts the agent loop, heartbeat, and any enabled channels (e.g., Discord, Telegram).
 
 ## CLI Commands
 
-| Command | Description |
-|---------|-------------|
-| `picobot version` | Print version |
-| `picobot onboard` | Create default config and workspace |
-| `picobot agent -m "..."` | Run a single-shot agent query |
-| `picobot agent -M model -m "..."` | Query with a specific model |
-| `picobot gateway` | Start long-running gateway |
-| `picobot memory read today` | Read today's memory notes |
-| `picobot memory read long` | Read long-term memory |
-| `picobot memory append today -c "..."` | Append to today's notes |
-| `picobot memory append long -c "..."` | Append to long-term memory |
-| `picobot memory write long -c "..."` | Overwrite long-term memory |
-| `picobot memory recent -days 7` | Show recent 7 days' notes |
-| `picobot memory rank -q "query"` | Rank memories by relevance |
+| Command                                | Description                         |
+| -------------------------------------- | ----------------------------------- |
+| `picobot version`                      | Print version                       |
+| `picobot onboard`                      | Create default config and workspace |
+| `picobot agent -m "..."`               | Run a single-shot agent query       |
+| `picobot agent -M model -m "..."`      | Query with a specific model         |
+| `picobot gateway`                      | Start long-running gateway          |
+| `picobot memory read today`            | Read today's memory notes           |
+| `picobot memory read long`             | Read long-term memory               |
+| `picobot memory append today -c "..."` | Append to today's notes             |
+| `picobot memory append long -c "..."`  | Append to long-term memory          |
+| `picobot memory write long -c "..."`   | Overwrite long-term memory          |
+| `picobot memory recent -days 7`        | Show recent 7 days' notes           |
+| `picobot memory rank -q "query"`       | Rank memories by relevance          |
 
 ## Available Tools
 
 The agent has access to 11 tools:
 
-| Tool | Purpose |
-|------|---------|
-| `message` | Send messages to channels |
-| `filesystem` | Read, write, list files |
-| `exec` | Run shell commands |
-| `web` | Fetch web content from URLs |
-| `spawn` | Spawn background subagent |
-| `cron` | Schedule cron jobs |
+| Tool           | Purpose                       |
+| -------------- | ----------------------------- |
+| `message`      | Send messages to channels     |
+| `filesystem`   | Read, write, list files       |
+| `exec`         | Run shell commands            |
+| `web`          | Fetch web content from URLs   |
+| `spawn`        | Spawn background subagent     |
+| `cron`         | Schedule cron jobs            |
 | `write_memory` | Persist information to memory |
-| `create_skill` | Create a new skill |
-| `list_skills` | List available skills |
-| `read_skill` | Read a skill's content |
-| `delete_skill` | Delete a skill |
+| `create_skill` | Create a new skill            |
+| `list_skills`  | List available skills         |
+| `read_skill`   | Read a skill's content        |
+| `delete_skill` | Delete a skill                |
+
+## Setting Up Discord
+
+To chat with Picobot via Discord DMs, create a bot in the Discord Developer Portal.
+
+### 1. Create an Application
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application** and give it a name (e.g., `Picobot`)
+
+### 2. Create a Bot
+
+1. In the left sidebar, open **Bot**
+2. Click **Add Bot**
+3. Copy the **Token** (click "Reset Token" if needed, then copy)
+
+### 3. Enable Message Content Intent
+
+The bot needs the **Message Content Intent** to read DM content:
+
+1. In the Bot settings, scroll to **Privileged Gateway Intents**
+2. Enable **Message Content Intent**
+3. Save changes
+
+### 4. Get Your Discord User ID
+
+To restrict who can DM the bot:
+
+1. In Discord, enable Developer Mode: User Settings → App Settings → Advanced → Developer Mode: ON
+2. Right-click your username anywhere and choose **Copy User ID**
+
+### 5. Configure Picobot
+
+Edit `~/.picobot/config.json`:
+
+```json
+{
+  "channels": {
+    "discord": {
+      "enabled": true,
+      "token": "YOUR_BOT_TOKEN_HERE",
+      "allowFrom": ["YOUR_DISCORD_USER_ID"]
+    }
+  }
+}
+```
+
+| Field       | Description                                                             |
+| ----------- | ----------------------------------------------------------------------- |
+| `enabled`   | Set to `true` to activate the Discord channel                           |
+| `token`     | The bot token from the Developer Portal                                 |
+| `allowFrom` | List of Discord user IDs allowed to DM. Empty `[]` = anyone can message |
+
+### 6. Start the Gateway and Message the Bot
+
+```sh
+./picobot gateway
+```
+
+To DM the bot: use the OAuth2 URL to add it to a server (so you can open a DM), or use the app's application URL from the Developer Portal to open a DM directly. The bot **only responds to DMs** — it ignores messages in servers.
+
+---
 
 ## Setting Up Telegram (BotFather Guide)
 
@@ -180,10 +243,10 @@ Edit `~/.picobot/config.json` and add your Telegram settings:
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `enabled` | Set to `true` to activate the Telegram channel |
-| `token` | The bot token from BotFather |
+| Field       | Description                                                      |
+| ----------- | ---------------------------------------------------------------- |
+| `enabled`   | Set to `true` to activate the Telegram channel                   |
+| `token`     | The bot token from BotFather                                     |
 | `allowFrom` | List of user IDs allowed to chat. Empty `[]` = anyone can use it |
 
 ### 6. Start the Gateway
@@ -198,13 +261,13 @@ Now open Telegram, find your bot by its username, and send it a message. Picobot
 
 You can also send these commands to @BotFather to polish your bot:
 
-| Command | What it does |
-|---------|-------------|
+| Command           | What it does                                 |
+| ----------------- | -------------------------------------------- |
 | `/setdescription` | Short description shown on the bot's profile |
-| `/setabouttext` | "About" text in the bot info page |
-| `/setuserpic` | Upload a profile photo for your bot |
-| `/setcommands` | Set the bot's command menu (e.g., `/start`) |
-| `/mybots` | Manage all your bots |
+| `/setabouttext`   | "About" text in the bot info page            |
+| `/setuserpic`     | Upload a profile photo for your bot          |
+| `/setcommands`    | Set the bot's command menu (e.g., `/start`)  |
+| `/mybots`         | Manage all your bots                         |
 
 ---
 
@@ -213,5 +276,5 @@ You can also send these commands to @BotFather to polish your bot:
 - Edit `SOUL.md` to change the agent's personality
 - Edit `AGENTS.md` to add custom instructions
 - Ask the agent to create skills for tasks you do often
-- Enable Telegram in `config.json` to chat with your bot on mobile
+- Enable Discord or Telegram in `config.json` to chat with your bot
 - See [CONFIG.md](CONFIG.md) for all configuration options

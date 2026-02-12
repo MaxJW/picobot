@@ -55,15 +55,16 @@ type functionDef struct {
 
 type messageJSON struct {
 	Role       string         `json:"role"`
-	Content    string         `json:"content"`
+	Content    interface{}    `json:"content"` // string or []ContentPart for vision
 	ToolCallID string         `json:"tool_call_id,omitempty"`
 	ToolCalls  []toolCallJSON `json:"tool_calls,omitempty"`
 }
 
 type toolCallJSON struct {
-	ID       string               `json:"id"`
-	Type     string               `json:"type"`
-	Function toolCallFunctionJSON `json:"function"`
+	ID           string                 `json:"id"`
+	Type         string                 `json:"type"`
+	Function     toolCallFunctionJSON   `json:"function"`
+	ExtraContent map[string]interface{} `json:"extra_content,omitempty"` // Gemini thought_signature; preserve when sending history back
 }
 
 type toolCallFunctionJSON struct {
@@ -73,7 +74,7 @@ type toolCallFunctionJSON struct {
 
 type messageResponseJSON struct {
 	Role      string         `json:"role"`
-	Content   string         `json:"content"`
+	Content   interface{}    `json:"content"` // API returns string or array
 	ToolCalls []toolCallJSON `json:"tool_calls,omitempty"`
 }
 
@@ -98,14 +99,18 @@ func (p *OpenAIProvider) Chat(ctx context.Context, messages []Message, tools []T
 		// Convert provider ToolCall to JSON-serializable toolCallJSON
 		for _, tc := range m.ToolCalls {
 			argsBytes, _ := json.Marshal(tc.Arguments)
-			mj.ToolCalls = append(mj.ToolCalls, toolCallJSON{
+			tcj := toolCallJSON{
 				ID:   tc.ID,
 				Type: "function",
 				Function: toolCallFunctionJSON{
 					Name:      tc.Name,
 					Arguments: string(argsBytes),
 				},
-			})
+			}
+			if len(tc.ExtraContent) > 0 {
+				tcj.ExtraContent = tc.ExtraContent
+			}
+			mj.ToolCalls = append(mj.ToolCalls, tcj)
 		}
 		reqBody.Messages = append(reqBody.Messages, mj)
 	}
@@ -178,13 +183,17 @@ func (p *OpenAIProvider) Chat(ctx context.Context, messages []Message, tools []T
 				// skip unparseable tool calls
 				continue
 			}
-			tcs = append(tcs, ToolCall{ID: tc.ID, Name: tc.Function.Name, Arguments: parsed})
+			t := ToolCall{ID: tc.ID, Name: tc.Function.Name, Arguments: parsed}
+			if len(tc.ExtraContent) > 0 {
+				t.ExtraContent = tc.ExtraContent
+			}
+			tcs = append(tcs, t)
 		}
 		if len(tcs) > 0 {
-			return LLMResponse{Content: strings.TrimSpace(msg.Content), HasToolCalls: true, ToolCalls: tcs}, nil
+			return LLMResponse{Content: strings.TrimSpace(ContentToString(msg.Content)), HasToolCalls: true, ToolCalls: tcs}, nil
 		}
 	}
 
 	// No tool calls
-	return LLMResponse{Content: strings.TrimSpace(msg.Content), HasToolCalls: false}, nil
+	return LLMResponse{Content: strings.TrimSpace(ContentToString(msg.Content)), HasToolCalls: false}, nil
 }

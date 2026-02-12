@@ -29,7 +29,7 @@ func NewContextBuilder(workspace string, r memory.Ranker, topK int) *ContextBuil
 	}
 }
 
-func (cb *ContextBuilder) BuildMessages(history []string, currentMessage string, channel, chatID string, memoryContext string, memories []memory.MemoryItem) []providers.Message {
+func (cb *ContextBuilder) BuildMessages(history []string, currentMessage string, media []string, channel, chatID string, memoryContext string, memories []memory.MemoryItem) []providers.Message {
 	msgs := make([]providers.Message, 0, len(history)+8)
 	// system prompt
 	msgs = append(msgs, providers.Message{Role: "system", Content: "You are Picobot, a helpful assistant."})
@@ -93,7 +93,28 @@ func (cb *ContextBuilder) BuildMessages(history []string, currentMessage string,
 		}
 	}
 
-	// current
-	msgs = append(msgs, providers.Message{Role: "user", Content: currentMessage})
+	// current user message (with optional images for vision models)
+	userContent := buildUserContent(currentMessage, media)
+	msgs = append(msgs, providers.Message{Role: "user", Content: userContent})
 	return msgs
+}
+
+// buildUserContent returns a string or a content array for multimodal (text + images).
+func buildUserContent(text string, media []string) interface{} {
+	if len(media) == 0 {
+		return text
+	}
+	if strings.TrimSpace(text) == "" {
+		text = "[Image attached]"
+	}
+	parts := []interface{}{
+		map[string]interface{}{"type": "text", "text": text},
+	}
+	for _, url := range media {
+		parts = append(parts, map[string]interface{}{
+			"type": "image_url",
+			"image_url": map[string]interface{}{"url": url},
+		})
+	}
+	return parts
 }

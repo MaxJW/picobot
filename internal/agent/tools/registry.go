@@ -2,7 +2,9 @@ package tools
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"log"
 	"sync"
 
 	"github.com/local/picobot/internal/providers"
@@ -69,5 +71,7 @@ func (r *Registry) Execute(ctx context.Context, name string, args map[string]int
 	if !ok {
 		return "", errors.New("tool not found")
 	}
+	argsJSON, _ := json.Marshal(args)
+	log.Printf("tool %s executing: %s", name, argsJSON)
 	return t.Execute(ctx, args)
 }

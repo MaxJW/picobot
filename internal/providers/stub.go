@@ -15,7 +15,7 @@ func (p *StubProvider) Chat(ctx context.Context, messages []Message, tools []Too
 	last := ""
 	for i := len(messages) - 1; i >= 0; i-- {
 		if messages[i].Role == "user" {
-			last = messages[i].Content
+			last = ContentToString(messages[i].Content)
 			break
 		}
 	}
