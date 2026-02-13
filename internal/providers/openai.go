@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"strings"
-	"time"
 )
 
 // OpenAIProvider calls an OpenAI-compatible API (OpenAI, OpenRouter, or similar).
@@ -27,7 +26,8 @@ func NewOpenAIProvider(apiKey, apiBase string) *OpenAIProvider {
 		APIKey:  apiKey,
 		APIBase: strings.TrimRight(apiBase, "/"),
 		Client: &http.Client{
-			Timeout: 300 * time.Second, // 5 minutes; some providers (e.g. OpenRouter free tier) can be slow
+			// Timeout: 0 means no client-side timeout; we wait for the endpoint to respond or time out.
+			// Some providers (e.g. OpenRouter free tier) can be very slow; prefer server-side limits.
 		},
 	}
 }
