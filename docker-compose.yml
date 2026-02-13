@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    platform: linux/arm64  # Use linux/amd64 for x86_64 systems, linux/arm/v7 for older Raspberry Pi
+    platform: linux/arm64 # Use linux/amd64 for x86_64 systems, linux/arm/v7 for older Raspberry Pi
     container_name: picobot
     restart: unless-stopped
     environment:
