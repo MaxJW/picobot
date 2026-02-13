@@ -75,11 +75,8 @@ func (cb *ContextBuilder) BuildMessages(history []string, currentMessage string,
 	// instruction for memory tool usage
 	msgs = append(msgs, providers.Message{Role: "system", Content: "If you decide something should be remembered, call the tool 'write_memory' with JSON arguments: {\"target\": \"today\"|\"long\", \"content\": \"...\", \"append\": true|false}. Use a tool call rather than plain chat text when writing memory."})
 
-	// instruction to keep conversation going after tool use
-	msgs = append(msgs, providers.Message{Role: "system", Content: "After using any tool, always provide a brief conversational response to the user (e.g. acknowledge what you did, summarize briefly, or ask a follow-up). Never leave the user with only the raw tool output."})
-
-	// instruction to act, not just describe: when you identify changes to make, call the tools immediately
-	msgs = append(msgs, providers.Message{Role: "system", Content: "When you identify changes to make (e.g. fixing a skill, editing a file, creating something), call the appropriate tools immediately. Do not just describe what you will do—actually do it in the same turn. Never end your response with a promise to do something without making the tool calls."})
+	// after finishing a task with tools, give a normal response so the user knows what you did
+	msgs = append(msgs, providers.Message{Role: "system", Content: "When you finish a task and the last step was using a tool, still give a normal conversational response so the user knows what you did. Never leave the user with only raw tool output. Never promise to do something without actually doing it—call the tools immediately."})
 
 	// Load and include skills context
 	loadedSkills, err := cb.skillsLoader.LoadAll()
