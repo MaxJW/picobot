@@ -1,6 +1,10 @@
 # ---- Build Stage ----
 FROM golang:1.25-alpine AS builder
 
+# Build arguments for cross-compilation
+ARG TARGETOS=linux
+ARG TARGETARCH=amd64
+
 RUN apk add --no-cache git ca-certificates tzdata
 
 WORKDIR /src
@@ -8,7 +12,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
     go build -ldflags="-s -w" -o /picobot ./cmd/picobot
 
 # ---- Runtime Stage ----
