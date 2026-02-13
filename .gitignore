@@ -8,6 +8,7 @@
 
 # Docker env (contains secrets)
 docker/.env
+.env
 
 # Session data
 /sessions/
