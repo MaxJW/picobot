@@ -112,6 +112,7 @@ func (t *CronTool) Execute(ctx context.Context, args map[string]interface{}) (st
 			id := t.scheduler.AddRecurring(name, message, delay, interval, t.channel, t.chatID)
 			return fmt.Sprintf("Scheduled recurring job %q (id: %s). Will fire in %v, then repeat every %v.", name, id, delay, interval), nil
 		}
+
 		// One-time job
 		id := t.scheduler.Add(name, message, delay, t.channel, t.chatID)
 		return fmt.Sprintf("Scheduled job %q (id: %s). Will fire in %v.", name, id, delay), nil

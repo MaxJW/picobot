@@ -16,6 +16,7 @@ Use the `cron` tool to schedule one-time reminders or recurring tasks.
 ## Examples
 
 ### One-time Reminders
+
 Set a one-time reminder:
 
 ```
@@ -29,7 +30,9 @@ cron(action="add", name="standup", message="Daily standup in 5 minutes", delay="
 ```
 
 ### Recurring Tasks
+
 **Important:** Recurring jobs have a **minimum interval of 2 minutes** to prevent abuse.
+
 Daily morning reminder (every 24 hours):
 
 ```
@@ -49,6 +52,7 @@ cron(action="add", name="water-reminder", message="Drink water!", delay="30m", r
 ```
 
 ### Manage Jobs
+
 List all pending jobs:
 
 ```
@@ -62,6 +66,7 @@ cron(action="cancel", name="break-reminder")
 ```
 
 ## Parameters
+
 | Parameter | Type | Required | Description |
 |---|---|---|---|
 | `action` | string | Yes | `add`, `list`, or `cancel` |
@@ -86,6 +91,7 @@ Use Go duration strings:
 | 1 week | `168h` |
 
 ## Notes
+
 - One-time jobs are removed after firing
 - Recurring jobs continue until cancelled
 - Minimum recurring interval: **2 minutes**
