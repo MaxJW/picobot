@@ -30,13 +30,10 @@ RUN mkdir -p ${PICOBOT_HOME} && chown -R picobot:picobot /home/picobot
 COPY --from=builder /picobot /usr/local/bin/picobot
 RUN chmod +x /usr/local/bin/picobot
 
-USER picobot
-WORKDIR /home/picobot
-
-# Run onboard on first start to create config + workspace,
-# then start the gateway. The entrypoint script handles this.
-COPY --chown=picobot:picobot docker/entrypoint.sh /entrypoint.sh
+# Entrypoint runs as root to fix volume permissions, then drops to picobot
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+WORKDIR /home/picobot
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["gateway"]
