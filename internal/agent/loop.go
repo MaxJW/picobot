@@ -55,14 +55,14 @@ func NewAgentLoop(b *chat.Hub, provider providers.LLMProvider, model string, max
 	}
 	reg.Register(fsTool)
 
-	reg.Register(tools.NewExecTool(300)) // 5 minutes
+	reg.Register(tools.NewExecTool(60)) // 1 minute; long-running tasks should use background/cron
 	reg.Register(tools.NewWebTool())
 	if scheduler != nil {
 		reg.Register(tools.NewCronTool(scheduler))
 	}
 
 	sm := session.NewSessionManager(workspace)
-	ctx := NewContextBuilder(workspace, memory.NewLLMRanker(provider, model), 5)
+	ctx := NewContextBuilder(workspace, memory.NewSimpleRanker(), 5) // SimpleRanker avoids extra LLM call per query
 	mem := memory.NewMemoryStoreWithWorkspace(workspace, 100)
 	// register memory tool (needs store instance)
 	reg.Register(tools.NewWriteMemoryTool(mem))
@@ -144,6 +144,9 @@ func (a *AgentLoop) Run(ctx context.Context) {
 			// get file-backed memory context (long-term + today)
 			memCtx, _ := a.memory.GetMemoryContext()
 			memories := a.memory.Recent(5)
+			if len(memories) == 0 {
+				memories = a.memory.RecentFromFiles(5)
+			}
 			messages := a.context.BuildMessages(session.GetHistory(), msg.Content, msg.Media, msg.Channel, msg.ChatID, memCtx, memories)
 
 			iteration := 0
@@ -215,6 +218,9 @@ func (a *AgentLoop) ProcessDirect(content string, timeout time.Duration) (string
 	// Build full context (bootstrap files, skills, memory) just like the main loop
 	memCtx, _ := a.memory.GetMemoryContext()
 	memories := a.memory.Recent(5)
+	if len(memories) == 0 {
+		memories = a.memory.RecentFromFiles(5)
+	}
 	messages := a.context.BuildMessages(nil, content, nil, "cli", "direct", memCtx, memories)
 
 	// Support tool calling iterations (similar to main loop)
@@ -280,6 +286,9 @@ func (a *AgentLoop) RunSubagent(ctx context.Context, sessionKey string, task str
 	childSession := a.sessions.GetOrCreate(sessionKey)
 	memCtx, _ := a.memory.GetMemoryContext()
 	memories := a.memory.Recent(5)
+	if len(memories) == 0 {
+		memories = a.memory.RecentFromFiles(5)
+	}
 	messages := a.context.BuildMessages(childSession.GetHistory(), task, nil, "subagent", sessionKey, memCtx, memories)
 
 	var lastToolResult string

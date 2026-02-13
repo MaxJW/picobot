@@ -85,7 +85,7 @@ func NewRootCmd() *cobra.Command {
 
 			ag := agent.NewAgentLoop(hub, provider, model, 5, cfg.Agents.Defaults.Workspace, nil)
 
-			resp, err := ag.ProcessDirect(msg, 300*time.Second) // 5 minutes
+			resp, err := ag.ProcessDirect(msg, 300*time.Second) // 5 minutes for slow providers
 			if err != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), "error:", err)
 				return

@@ -192,6 +192,45 @@ func (s *MemoryStore) GetRecentMemories(days int) (string, error) {
 	return strings.Join(parts, "\n---\n"), nil
 }
 
+// RecentFromFiles returns up to n MemoryItems from today's notes and long-term memory.
+// Used by the agent for context when in-memory short/long are empty (file-based memory is primary).
+func (s *MemoryStore) RecentFromFiles(n int) []MemoryItem {
+	if n <= 0 {
+		return nil
+	}
+	out := make([]MemoryItem, 0, n)
+	td, err := s.ReadToday()
+	if err == nil && td != "" {
+		for _, line := range strings.Split(td, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			if idx := strings.Index(line, "] "); idx != -1 && strings.HasPrefix(line, "[") {
+				line = strings.TrimSpace(line[idx+2:])
+			}
+			out = append(out, MemoryItem{Kind: "today", Text: line})
+			if len(out) >= n {
+				return out
+			}
+		}
+	}
+	lt, err := s.ReadLongTerm()
+	if err == nil && lt != "" {
+		for _, line := range strings.Split(lt, "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			out = append(out, MemoryItem{Kind: "long", Text: line})
+			if len(out) >= n {
+				return out
+			}
+		}
+	}
+	return out
+}
+
 // GetMemoryContext returns combined long-term memory + today's notes for the system prompt.
 func (s *MemoryStore) GetMemoryContext() (string, error) {
 	lt, err := s.ReadLongTerm()

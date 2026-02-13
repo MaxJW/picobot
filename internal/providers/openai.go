@@ -27,7 +27,7 @@ func NewOpenAIProvider(apiKey, apiBase string) *OpenAIProvider {
 		APIKey:  apiKey,
 		APIBase: strings.TrimRight(apiBase, "/"),
 		Client: &http.Client{
-			Timeout: 300 * time.Second, // 5 minutes
+			Timeout: 300 * time.Second, // 5 minutes; some providers (e.g. OpenRouter free tier) can be slow
 		},
 	}
 }
