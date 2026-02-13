@@ -1,7 +1,7 @@
 services:
   picobot:
     build:
-      context: ..
+      context: .
       dockerfile: docker/Dockerfile
     container_name: picobot
     restart: unless-stopped
