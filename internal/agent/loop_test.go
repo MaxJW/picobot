@@ -10,6 +10,26 @@ import (
 	"github.com/local/picobot/internal/providers"
 )
 
+func TestSuggestsIncompleteAction(t *testing.T) {
+	tests := []struct {
+		content string
+		want   bool
+	}{
+		{"Let me fix the skill:", true},
+		{"I see the problem. Let me fix it:", true},
+		{"I'll fix that.", true}, // promise without tool calls
+		{"Here's the analysis...", true},
+		{"Done.", false},
+		{"", false},
+		{"I will fix the skill", true},
+	}
+	for _, tt := range tests {
+		if got := suggestsIncompleteAction(tt.content); got != tt.want {
+			t.Errorf("suggestsIncompleteAction(%q) = %v, want %v", tt.content, got, tt.want)
+		}
+	}
+}
+
 func TestProcessDirectWithStub(t *testing.T) {
 	b := chat.NewHub(10)
 	p := providers.NewStubProvider()

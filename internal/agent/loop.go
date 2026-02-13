@@ -18,6 +18,23 @@ import (
 
 var rememberRE = regexp.MustCompile(`(?i)^remember(?:\s+to)?\s+(.+)$`)
 
+// suggestsIncompleteAction returns true if the content looks like the model promised to do something but didn't (e.g. "Let me fix the skill:").
+func suggestsIncompleteAction(content string) bool {
+	t := strings.TrimSpace(content)
+	if t == "" {
+		return false
+	}
+	// Trailing colon often means the model was about to continue (e.g. with tool calls)
+	if strings.HasSuffix(t, ":") || strings.HasSuffix(t, "...") {
+		return true
+	}
+	// "Let me X" or "I'll fix" without actually calling tools
+	if (strings.Contains(t, "Let me ") || strings.Contains(t, "I'll fix") || strings.Contains(t, "I will fix")) && len(t) < 400 {
+		return true
+	}
+	return false
+}
+
 // AgentLoop is the core processing loop; it holds an LLM provider, tools, sessions and context builder.
 type AgentLoop struct {
 	hub           *chat.Hub
@@ -179,10 +196,17 @@ func (a *AgentLoop) Run(ctx context.Context) {
 					}
 					// loop again
 					continue
-				} else {
-					finalContent = resp.Content
-					break
 				}
+
+				// Text-only response: check if model promised to act but didn't (e.g. "Let me fix the skill:")
+				if lastToolResult != "" && suggestsIncompleteAction(resp.Content) && iteration < a.maxIterations {
+					messages = append(messages, providers.Message{Role: "assistant", Content: resp.Content})
+					messages = append(messages, providers.Message{Role: "user", Content: "Please proceed and make the changes using the tools."})
+					continue
+				}
+
+				finalContent = resp.Content
+				break
 			}
 
 			if finalContent == "" && lastToolResult != "" {
@@ -233,6 +257,12 @@ func (a *AgentLoop) ProcessDirect(content string, timeout time.Duration) (string
 		}
 
 		if !resp.HasToolCalls {
+			// Check if model promised to act but didn't; if so, prompt to continue
+			if lastToolResult != "" && suggestsIncompleteAction(resp.Content) && iteration < a.maxIterations-1 {
+				messages = append(messages, providers.Message{Role: "assistant", Content: resp.Content})
+				messages = append(messages, providers.Message{Role: "user", Content: "Please proceed and make the changes using the tools."})
+				continue
+			}
 			// No tool calls, return the response (fall back to last tool result if empty)
 			if resp.Content != "" {
 				return resp.Content, nil
@@ -300,6 +330,12 @@ func (a *AgentLoop) RunSubagent(ctx context.Context, sessionKey string, task str
 		}
 
 		if !resp.HasToolCalls {
+			// Check if model promised to act but didn't; if so, prompt to continue
+			if lastToolResult != "" && suggestsIncompleteAction(resp.Content) && iteration < a.maxIterations-1 {
+				messages = append(messages, providers.Message{Role: "assistant", Content: resp.Content})
+				messages = append(messages, providers.Message{Role: "user", Content: "Please proceed and make the changes using the tools."})
+				continue
+			}
 			if resp.Content != "" {
 				childSession.AddMessage("user", task)
 				childSession.AddMessage("assistant", resp.Content)
