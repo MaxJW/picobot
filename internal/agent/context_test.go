@@ -8,6 +8,62 @@ import (
 	"github.com/local/picobot/internal/providers"
 )
 
+func TestParseHistoryItem(t *testing.T) {
+	tests := []struct {
+		in       string
+		wantRole string
+		wantCnt string
+	}{
+		{"user: hello", "user", "hello"},
+		{"assistant: hi there", "assistant", "hi there"},
+		{"user: ", "user", ""},
+		{"assistant: multi\nline\ncontent", "assistant", "multi\nline\ncontent"},
+		{"no-colon", "user", "no-colon"},
+		{"", "user", ""},
+	}
+	for _, tt := range tests {
+		role, content := parseHistoryItem(tt.in)
+		if role != tt.wantRole || content != tt.wantCnt {
+			t.Errorf("parseHistoryItem(%q) = (%q, %q), want (%q, %q)", tt.in, role, content, tt.wantRole, tt.wantCnt)
+		}
+	}
+}
+
+func TestBuildMessagesParsesHistoryRoles(t *testing.T) {
+	cb := NewContextBuilder(".", nil, 5)
+	history := []string{
+		"user: what is 2+2?",
+		"assistant: 2+2 equals 4",
+		"user: thanks",
+	}
+	msgs := cb.BuildMessages(history, "bye", nil, "discord", "123", "", nil)
+
+	// Find the history messages (after system block, before current user)
+	var historyMsgs []providers.Message
+	for i, m := range msgs {
+		c := providers.ContentToString(m.Content)
+		if c == "what is 2+2?" {
+			if m.Role != "user" {
+				t.Errorf("message %d: expected role user, got %s", i, m.Role)
+			}
+			historyMsgs = append(historyMsgs, m)
+		} else if c == "2+2 equals 4" {
+			if m.Role != "assistant" {
+				t.Errorf("message %d: expected role assistant, got %s", i, m.Role)
+			}
+			historyMsgs = append(historyMsgs, m)
+		} else if c == "thanks" {
+			if m.Role != "user" {
+				t.Errorf("message %d: expected role user, got %s", i, m.Role)
+			}
+			historyMsgs = append(historyMsgs, m)
+		}
+	}
+	if len(historyMsgs) != 3 {
+		t.Errorf("expected 3 history messages with correct roles, got %d", len(historyMsgs))
+	}
+}
+
 func TestBuildMessagesIncludesMemories(t *testing.T) {
 	cb := NewContextBuilder(".", memory.NewSimpleRanker(), 5)
 	history := []string{"user: hi"}

@@ -57,7 +57,6 @@ func NewAgentLoop(b *chat.Hub, provider providers.LLMProvider, model string, max
 
 	reg.Register(tools.NewExecTool(60))
 	reg.Register(tools.NewWebTool())
-	reg.Register(tools.NewSpawnTool())
 	if scheduler != nil {
 		reg.Register(tools.NewCronTool(scheduler))
 	}
@@ -75,7 +74,9 @@ func NewAgentLoop(b *chat.Hub, provider providers.LLMProvider, model string, max
 	reg.Register(tools.NewReadSkillTool(skillMgr))
 	reg.Register(tools.NewDeleteSkillTool(skillMgr))
 
-	return &AgentLoop{hub: b, provider: provider, tools: reg, sessions: sm, context: ctx, memory: mem, model: model, maxIterations: maxIterations}
+	a := &AgentLoop{hub: b, provider: provider, tools: reg, sessions: sm, context: ctx, memory: mem, model: model, maxIterations: maxIterations}
+	reg.Register(tools.NewSpawnTool(b, a))
+	return a
 }
 
 // Run starts processing inbound messages. This is a blocking call until context is canceled.
@@ -132,6 +133,11 @@ func (a *AgentLoop) Run(ctx context.Context) {
 					ctool.SetContext(msg.Channel, msg.ChatID)
 				}
 			}
+			if st := a.tools.Get("spawn"); st != nil {
+				if spawnTool, ok := st.(interface{ SetContext(string, string) }); ok {
+					spawnTool.SetContext(msg.Channel, msg.ChatID)
+				}
+			}
 
 			// Build messages from session, long-term memory, and recent memory
 			session := a.sessions.GetOrCreate(msg.Channel + ":" + msg.ChatID)
@@ -146,6 +152,7 @@ func (a *AgentLoop) Run(ctx context.Context) {
 			toolDefs := a.tools.Definitions()
 			for iteration < a.maxIterations {
 				iteration++
+				messages, _ = CompactIfNeeded(ctx, messages, DefaultContextWindowTokens, a.provider, a.model)
 				resp, err := a.provider.Chat(ctx, messages, toolDefs, a.model)
 				if err != nil {
 					log.Printf("provider error: %v", err)
@@ -157,11 +164,13 @@ func (a *AgentLoop) Run(ctx context.Context) {
 					// append assistant message with tool_calls attached
 					messages = append(messages, providers.Message{Role: "assistant", Content: resp.Content, ToolCalls: resp.ToolCalls})
 					// Execute each tool call and return results with "tool" role
+					maxChars := CalculateMaxToolResultChars(DefaultContextWindowTokens)
 					for _, tc := range resp.ToolCalls {
 						res, err := a.tools.Execute(ctx, tc.Name, tc.Arguments)
 						if err != nil {
 							res = "(tool error) " + err.Error()
 						}
+						res = TruncateToolResult(res, maxChars)
 						lastToolResult = res
 						messages = append(messages, providers.Message{Role: "tool", Content: res, ToolCallID: tc.ID})
 					}
@@ -211,6 +220,7 @@ func (a *AgentLoop) ProcessDirect(content string, timeout time.Duration) (string
 	// Support tool calling iterations (similar to main loop)
 	var lastToolResult string
 	for iteration := 0; iteration < a.maxIterations; iteration++ {
+		messages, _ = CompactIfNeeded(ctx, messages, DefaultContextWindowTokens, a.provider, a.model)
 		resp, err := a.provider.Chat(ctx, messages, a.tools.Definitions(), a.model)
 		if err != nil {
 			return "", err
@@ -229,15 +239,88 @@ func (a *AgentLoop) ProcessDirect(content string, timeout time.Duration) (string
 
 		// Execute tool calls
 		messages = append(messages, providers.Message{Role: "assistant", Content: resp.Content, ToolCalls: resp.ToolCalls})
+		maxChars := CalculateMaxToolResultChars(DefaultContextWindowTokens)
 		for _, tc := range resp.ToolCalls {
 			result, err := a.tools.Execute(ctx, tc.Name, tc.Arguments)
 			if err != nil {
 				result = "(tool error) " + err.Error()
 			}
+			result = TruncateToolResult(result, maxChars)
 			lastToolResult = result
 			messages = append(messages, providers.Message{Role: "tool", Content: result, ToolCallID: tc.ID})
 		}
 	}
 
+	return "Max iterations reached without final response", nil
+}
+
+// RunSubagent runs a subagent task in an isolated session and returns the final response.
+// It implements tools.SpawnRunner for use by the spawn tool.
+func (a *AgentLoop) RunSubagent(ctx context.Context, sessionKey string, task string, timeout time.Duration, requesterChannel, requesterChatID string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	// Set tool context so subagent's message/cron sends go to the requester
+	if mt := a.tools.Get("message"); mt != nil {
+		if mtool, ok := mt.(interface{ SetContext(string, string) }); ok {
+			mtool.SetContext(requesterChannel, requesterChatID)
+		}
+	}
+	if ct := a.tools.Get("cron"); ct != nil {
+		if ctool, ok := ct.(interface{ SetContext(string, string) }); ok {
+			ctool.SetContext(requesterChannel, requesterChatID)
+		}
+	}
+	if st := a.tools.Get("spawn"); st != nil {
+		if spawnTool, ok := st.(interface{ SetContext(string, string) }); ok {
+			spawnTool.SetContext("subagent", sessionKey)
+		}
+	}
+
+	childSession := a.sessions.GetOrCreate(sessionKey)
+	memCtx, _ := a.memory.GetMemoryContext()
+	memories := a.memory.Recent(5)
+	messages := a.context.BuildMessages(childSession.GetHistory(), task, nil, "subagent", sessionKey, memCtx, memories)
+
+	var lastToolResult string
+	for iteration := 0; iteration < a.maxIterations; iteration++ {
+		messages, _ = CompactIfNeeded(ctx, messages, DefaultContextWindowTokens, a.provider, a.model)
+		resp, err := a.provider.Chat(ctx, messages, a.tools.Definitions(), a.model)
+		if err != nil {
+			return "", err
+		}
+
+		if !resp.HasToolCalls {
+			if resp.Content != "" {
+				childSession.AddMessage("user", task)
+				childSession.AddMessage("assistant", resp.Content)
+				_ = a.sessions.Save(childSession)
+				return resp.Content, nil
+			}
+			if lastToolResult != "" {
+				return lastToolResult, nil
+			}
+			return resp.Content, nil
+		}
+
+		messages = append(messages, providers.Message{Role: "assistant", Content: resp.Content, ToolCalls: resp.ToolCalls})
+		maxChars := CalculateMaxToolResultChars(DefaultContextWindowTokens)
+		for _, tc := range resp.ToolCalls {
+			result, err := a.tools.Execute(ctx, tc.Name, tc.Arguments)
+			if err != nil {
+				result = "(tool error) " + err.Error()
+			}
+			result = TruncateToolResult(result, maxChars)
+			lastToolResult = result
+			messages = append(messages, providers.Message{Role: "tool", Content: result, ToolCallID: tc.ID})
+		}
+	}
+
+	childSession.AddMessage("user", task)
+	childSession.AddMessage("assistant", lastToolResult)
+	_ = a.sessions.Save(childSession)
+	if lastToolResult != "" {
+		return lastToolResult, nil
+	}
 	return "Max iterations reached without final response", nil
 }
