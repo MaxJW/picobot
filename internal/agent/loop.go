@@ -55,7 +55,7 @@ func NewAgentLoop(b *chat.Hub, provider providers.LLMProvider, model string, max
 	}
 	reg.Register(fsTool)
 
-	reg.Register(tools.NewExecTool(60))
+	reg.Register(tools.NewExecTool(300)) // 5 minutes
 	reg.Register(tools.NewWebTool())
 	if scheduler != nil {
 		reg.Register(tools.NewCronTool(scheduler))

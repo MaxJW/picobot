@@ -19,7 +19,7 @@ func DefaultConfig() Config {
 			MaxTokens:          8192,
 			Temperature:        0.7,
 			MaxToolIterations:  100,
-			HeartbeatIntervalS: 60,
+			HeartbeatIntervalS: 3600,
 		}},
 		Channels: ChannelsConfig{
 			Telegram: TelegramConfig{Enabled: false, Token: "", AllowFrom: []string{}},
@@ -239,7 +239,7 @@ Schedule or manage cron jobs.
 
 		"HEARTBEAT.md": `# Heartbeat
 
-This file is checked periodically (every 60 seconds). Add tasks here that should run on a schedule.
+This file is checked periodically (every hour). Add tasks here that should run on a schedule.
 
 ## Periodic Tasks
 

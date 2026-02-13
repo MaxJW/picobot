@@ -13,7 +13,7 @@ Picobot is configured via `~/.picobot/config.json`. Run `picobot onboard` to gen
       "maxTokens": 8192,
       "temperature": 0.7,
       "maxToolIterations": 100,
-      "heartbeatIntervalS": 60
+      "heartbeatIntervalS": 3600
     }
   },
   "channels": {
@@ -50,7 +50,7 @@ Agent behavior settings.
 | `maxTokens`          | int    | `8192`                 | Maximum tokens for LLM responses.                                                                                   |
 | `temperature`        | float  | `0.7`                  | LLM temperature (0.0 = deterministic, 1.0 = creative).                                                              |
 | `maxToolIterations`  | int    | `100`                  | Maximum number of tool-calling iterations per request. Prevents infinite loops.                                     |
-| `heartbeatIntervalS` | int    | `60`                   | How often (in seconds) the heartbeat checks `HEARTBEAT.md` for periodic tasks. Only used in gateway mode.           |
+| `heartbeatIntervalS` | int    | `3600`                 | How often (in seconds) the heartbeat checks `HEARTBEAT.md` for periodic tasks. Only used in gateway mode.           |
 
 ### Model Priority
 
@@ -213,7 +213,7 @@ The workspace directory (default `~/.picobot/workspace`) contains files that sha
       "maxTokens": 8192,
       "temperature": 0.7,
       "maxToolIterations": 200,
-      "heartbeatIntervalS": 60
+      "heartbeatIntervalS": 3600
     }
   },
   "channels": {

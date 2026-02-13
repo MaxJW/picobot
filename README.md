@@ -19,14 +19,14 @@ No Python. No Node. No 500MB container. Just one Go binary and a config file.
 
 ## Why Picobot?
 
-| | Picobot | Typical Agent Frameworks |
-|---|---|---|
-| **Binary size** | ~12MB | 200MB+ (Python + deps) |
-| **Docker image** | ~33MB (Alpine) | 500MB–1GB+ |
-| **Cold start** | Instant | 5–30 seconds |
-| **RAM usage** | ~20MB idle | 200MB–1GB |
-| **Dependencies** | Zero (single binary) | Python, pip, venv, Node… |
-| **Minimum hardware** | 1 CPU / 256MB RAM | 2+ CPU / 1GB+ RAM |
+|                      | Picobot              | Typical Agent Frameworks |
+| -------------------- | -------------------- | ------------------------ |
+| **Binary size**      | ~12MB                | 200MB+ (Python + deps)   |
+| **Docker image**     | ~33MB (Alpine)       | 500MB–1GB+               |
+| **Cold start**       | Instant              | 5–30 seconds             |
+| **RAM usage**        | ~20MB idle           | 200MB–1GB                |
+| **Dependencies**     | Zero (single binary) | Python, pip, venv, Node… |
+| **Minimum hardware** | 1 CPU / 256MB RAM    | 2+ CPU / 1GB+ RAM        |
 
 Picobot runs happily on a **$5/mo VPS**, a Raspberry Pi, or even an old Android phone via Termux.
 
@@ -98,19 +98,19 @@ Notes: Channel refers to communication channels (e.g., Telegram, WhatsApp, etc.)
 
 The agent can take real actions — not just chat:
 
-| Tool | What it does |
-|------|-------------|
-| `filesystem` | Read, write, list files |
-| `exec` | Run shell commands |
-| `web` | Fetch web pages and APIs |
-| `message` | Send messages to channels |
-| `spawn` | Launch background subagents |
-| `cron` | Schedule recurring tasks |
+| Tool           | What it does                        |
+| -------------- | ----------------------------------- |
+| `filesystem`   | Read, write, list files             |
+| `exec`         | Run shell commands                  |
+| `web`          | Fetch web pages and APIs            |
+| `message`      | Send messages to channels           |
+| `spawn`        | Launch background subagents         |
+| `cron`         | Schedule recurring tasks            |
 | `write_memory` | Persist information across sessions |
-| `create_skill` | Create reusable skill packages |
-| `list_skills` | List available skills |
-| `read_skill` | Read a skill's content |
-| `delete_skill` | Remove a skill |
+| `create_skill` | Create reusable skill packages      |
+| `list_skills`  | List available skills               |
+| `read_skill`   | Read a skill's content              |
+| `delete_skill` | Remove a skill                      |
 
 ### Persistent Memory
 
@@ -148,7 +148,7 @@ See [HOW_TO_START.md](HOW_TO_START.md) for a detailed BotFather walkthrough.
 
 ### Heartbeat
 
-A configurable periodic check (default: 60s) that reads `HEARTBEAT.md` for scheduled tasks — like a personal cron with natural language.
+A configurable periodic check (default: 1 hour) that reads `HEARTBEAT.md` for scheduled tasks — like a personal cron with natural language.
 
 ## Configuration
 
@@ -213,14 +213,14 @@ Works on any Linux with 256MB RAM. No runtime dependencies. Just copy the binary
 
 ## Tech Stack
 
-| Layer | Technology |
-|-------|------------|
-| Language | [Go](https://go.dev/) 1.25+ |
-| CLI framework | [Cobra](https://github.com/spf13/cobra) |
-| LLM providers | OpenAI-compatible API (OpenAI, OpenRouter, Ollama, etc.) |
-| Telegram | Raw Bot API (no third-party SDK, standard library `net/http`) |
-| HTTP / JSON | Go standard library only (`net/http`, `encoding/json`) |
-| Container | Alpine Linux 3.20 (multi-stage Docker build) |
+| Layer         | Technology                                                    |
+| ------------- | ------------------------------------------------------------- |
+| Language      | [Go](https://go.dev/) 1.25+                                   |
+| CLI framework | [Cobra](https://github.com/spf13/cobra)                       |
+| LLM providers | OpenAI-compatible API (OpenAI, OpenRouter, Ollama, etc.)      |
+| Telegram      | Raw Bot API (no third-party SDK, standard library `net/http`) |
+| HTTP / JSON   | Go standard library only (`net/http`, `encoding/json`)        |
+| Container     | Alpine Linux 3.20 (multi-stage Docker build)                  |
 
 Picobot has **one** external dependency (`spf13/cobra` for CLI parsing). Everything else — HTTP clients, JSON handling, Telegram polling, provider integrations — uses the Go standard library.
 

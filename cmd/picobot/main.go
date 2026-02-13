@@ -85,7 +85,7 @@ func NewRootCmd() *cobra.Command {
 
 			ag := agent.NewAgentLoop(hub, provider, model, 5, cfg.Agents.Defaults.Workspace, nil)
 
-			resp, err := ag.ProcessDirect(msg, 60*time.Second)
+			resp, err := ag.ProcessDirect(msg, 300*time.Second) // 5 minutes
 			if err != nil {
 				fmt.Fprintln(cmd.ErrOrStderr(), "error:", err)
 				return
@@ -139,7 +139,7 @@ func NewRootCmd() *cobra.Command {
 			// start heartbeat
 			hbInterval := time.Duration(cfg.Agents.Defaults.HeartbeatIntervalS) * time.Second
 			if hbInterval <= 0 {
-				hbInterval = 60 * time.Second
+				hbInterval = 3600 * time.Second
 			}
 			heartbeat.StartHeartbeat(ctx, cfg.Agents.Defaults.Workspace, hbInterval, hub)
 
