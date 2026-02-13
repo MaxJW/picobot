@@ -18,7 +18,7 @@ RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} \
 # ---- Runtime Stage ----
 FROM alpine:3.20
 
-RUN apk add --no-cache ca-certificates tzdata bash curl
+RUN apk add --no-cache ca-certificates tzdata bash curl git jq
 
 # Create non-root user
 RUN addgroup -S picobot && adduser -S picobot -G picobot
