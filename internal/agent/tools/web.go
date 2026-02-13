@@ -3,12 +3,12 @@ package tools
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 )
 
 // WebTool supports fetch operations.
-// Args: {"url": "https://..."}
+// Args: {"url": "https://...", "headers": {"Header-Name": "value"} (optional)}
 
 type WebTool struct{}
 
@@ -25,6 +25,11 @@ func (t *WebTool) Parameters() map[string]interface{} {
 				"type":        "string",
 				"description": "The URL to fetch (must be http or https)",
 			},
+			"headers": map[string]interface{}{
+				"type": "object",
+				"description": "Optional HTTP headers to send with the request",
+				"additionalProperties": map[string]interface{}{"type": "string"},
+			},
 		},
 		"required": []string{"url"},
 	}
@@ -39,12 +44,23 @@ func (t *WebTool) Execute(ctx context.Context, args map[string]interface{}) (str
 	if err != nil {
 		return "", err
 	}
+	if headersRaw, ok := args["headers"]; ok {
+		headers, ok := headersRaw.(map[string]interface{})
+		if !ok {
+			return "", fmt.Errorf("web: 'headers' must be an object")
+		}
+		for k, v := range headers {
+			if s, ok := v.(string); ok {
+				req.Header.Set(k, s)
+			}
+		}
+	}
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return "", err
 	}
 	defer resp.Body.Close()
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}

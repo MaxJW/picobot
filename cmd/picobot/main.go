@@ -99,7 +99,7 @@ func NewRootCmd() *cobra.Command {
 
 	gatewayCmd := &cobra.Command{
 		Use:   "gateway",
-		Short: "Start long-running gateway (agent, telegram, heartbeat)",
+		Short: "Start long-running gateway (agent, discord/telegram, heartbeat)",
 		Run: func(cmd *cobra.Command, args []string) {
 			hub := chat.NewHub(200)
 			cfg, _ := config.LoadConfig()
@@ -147,6 +147,12 @@ func NewRootCmd() *cobra.Command {
 			if cfg.Channels.Telegram.Enabled {
 				if err := channels.StartTelegram(ctx, hub, cfg.Channels.Telegram.Token, cfg.Channels.Telegram.AllowFrom); err != nil {
 					fmt.Fprintf(os.Stderr, "failed to start telegram: %v\n", err)
+				}
+			}
+			// start discord if enabled
+			if cfg.Channels.Discord.Enabled {
+				if err := channels.StartDiscord(ctx, hub, cfg.Channels.Discord.Token, cfg.Channels.Discord.AllowFrom); err != nil {
+					fmt.Fprintf(os.Stderr, "failed to start discord: %v\n", err)
 				}
 			}
 

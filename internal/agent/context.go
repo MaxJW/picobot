@@ -29,7 +29,30 @@ func NewContextBuilder(workspace string, r memory.Ranker, topK int) *ContextBuil
 	}
 }
 
-func (cb *ContextBuilder) BuildMessages(history []string, currentMessage string, channel, chatID string, memoryContext string, memories []memory.MemoryItem) []providers.Message {
+// parseHistoryItem extracts role and content from a history item in "role: content" format.
+// Returns ("user", content) for "user: hello", ("assistant", content) for "assistant: hi", etc.
+// Defaults to "user" if the role is unrecognized.
+func parseHistoryItem(h string) (role, content string) {
+	const sep = ": "
+	idx := strings.Index(h, sep)
+	if idx < 0 {
+		return "user", h
+	}
+	role = strings.TrimSpace(strings.ToLower(h[:idx]))
+	content = strings.TrimSpace(h[idx+len(sep):])
+	switch role {
+	case "assistant":
+		return "assistant", content
+	case "system":
+		return "system", content
+	case "tool":
+		return "user", content
+	default:
+		return "user", content
+	}
+}
+
+func (cb *ContextBuilder) BuildMessages(history []string, currentMessage string, media []string, channel, chatID string, memoryContext string, memories []memory.MemoryItem) []providers.Message {
 	msgs := make([]providers.Message, 0, len(history)+8)
 	// system prompt
 	msgs = append(msgs, providers.Message{Role: "system", Content: "You are Picobot, a helpful assistant."})
@@ -51,6 +74,9 @@ func (cb *ContextBuilder) BuildMessages(history []string, currentMessage string,
 
 	// instruction for memory tool usage
 	msgs = append(msgs, providers.Message{Role: "system", Content: "If you decide something should be remembered, call the tool 'write_memory' with JSON arguments: {\"target\": \"today\"|\"long\", \"content\": \"...\", \"append\": true|false}. Use a tool call rather than plain chat text when writing memory."})
+
+	// instruction to keep conversation going after tool use
+	msgs = append(msgs, providers.Message{Role: "system", Content: "After using any tool, always provide a brief conversational response to the user (e.g. acknowledge what you did, summarize briefly, or ask a follow-up). Never leave the user with only the raw tool output."})
 
 	// Load and include skills context
 	loadedSkills, err := cb.skillsLoader.LoadAll()
@@ -87,13 +113,35 @@ func (cb *ContextBuilder) BuildMessages(history []string, currentMessage string,
 
 	// replay history
 	for _, h := range history {
-		// history items are of the form "role: content"
-		if len(h) > 0 {
-			msgs = append(msgs, providers.Message{Role: "user", Content: h})
+		if len(h) == 0 {
+			continue
 		}
+		role, content := parseHistoryItem(h)
+		msgs = append(msgs, providers.Message{Role: role, Content: content})
 	}
 
-	// current
-	msgs = append(msgs, providers.Message{Role: "user", Content: currentMessage})
+	// current user message (with optional images for vision models)
+	userContent := buildUserContent(currentMessage, media)
+	msgs = append(msgs, providers.Message{Role: "user", Content: userContent})
 	return msgs
+}
+
+// buildUserContent returns a string or a content array for multimodal (text + images).
+func buildUserContent(text string, media []string) interface{} {
+	if len(media) == 0 {
+		return text
+	}
+	if strings.TrimSpace(text) == "" {
+		text = "[Image attached]"
+	}
+	parts := []interface{}{
+		map[string]interface{}{"type": "text", "text": text},
+	}
+	for _, url := range media {
+		parts = append(parts, map[string]interface{}{
+			"type": "image_url",
+			"image_url": map[string]interface{}{"url": url},
+		})
+	}
+	return parts
 }

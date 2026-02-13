@@ -109,7 +109,7 @@ func (t *CronTool) Execute(ctx context.Context, args map[string]interface{}) (st
 			if interval < 2*time.Minute {
 				return "", fmt.Errorf("cron add: recurring interval must be at least 2m (got %v)", interval)
 			}
-			id := t.scheduler.AddRecurring(name, message, interval, t.channel, t.chatID)
+			id := t.scheduler.AddRecurring(name, message, delay, interval, t.channel, t.chatID)
 			return fmt.Sprintf("Scheduled recurring job %q (id: %s). Will fire in %v, then repeat every %v.", name, id, delay, interval), nil
 		}
 

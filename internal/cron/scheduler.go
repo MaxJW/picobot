@@ -58,8 +58,8 @@ func (s *Scheduler) Add(name, message string, delay time.Duration, channel, chat
 	return id
 }
 
-// AddRecurring schedules a recurring job. Returns the job ID.
-func (s *Scheduler) AddRecurring(name, message string, interval time.Duration, channel, chatID string) string {
+// AddRecurring schedules a recurring job. initialDelay is when to fire first; interval is the repeat period.
+func (s *Scheduler) AddRecurring(name, message string, initialDelay, interval time.Duration, channel, chatID string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.nextID++
@@ -68,13 +68,13 @@ func (s *Scheduler) AddRecurring(name, message string, interval time.Duration, c
 		ID:        id,
 		Name:      name,
 		Message:   message,
-		FireAt:    time.Now().Add(interval),
+		FireAt:    time.Now().Add(initialDelay),
 		Channel:   channel,
 		ChatID:    chatID,
 		Recurring: true,
 		Interval:  interval,
 	}
-	log.Printf("cron: scheduled recurring job %q (%s) every %v", name, id, interval)
+	log.Printf("cron: scheduled recurring job %q (%s) in %v, then every %v", name, id, initialDelay, interval)
 	return id
 }
 
